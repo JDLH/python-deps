@@ -3,6 +3,7 @@
 
 import commands
 import os
+import platform
 
 import distutils.version
 
@@ -66,18 +67,30 @@ def getDistroFromRelease():
 
     rtype: L{Distro} or None.
     """
-    # start with lsb_release
-    (status, output) = commands.getstatusoutput("lsb_release -i")
-    if os.WIFEXITED(status):
-        ret = os.WEXITSTATUS(status)
-        if ret == 127:
-            raise DistroException('lsb_release binary not found')
 
-    if output and output.startswith('Distributor ID:'):
-        distributor = output.split(':', 2)[1].strip()
-        output = commands.getoutput("lsb_release -d")
-        description = output.split(':', 2)[1].strip()
-        output = commands.getoutput("lsb_release -r")
-        release = output.split(':', 2)[1].strip()
+    if platform.system() == "Linux":
+            # Linux standard base: start with lsb_release
+        (status, output) = commands.getstatusoutput("lsb_release -i")
+        if os.WIFEXITED(status):
+            ret = os.WEXITSTATUS(status)
+            if ret == 127:
+                raise DistroException('lsb_release binary not found')
 
-        return Distro(description, distributor, release, None)
+        if output and output.startswith('Distributor ID:'):
+            distributor = output.split(':', 2)[1].strip()
+            output = commands.getoutput("lsb_release -d")
+            description = output.split(':', 2)[1].strip()
+            output = commands.getoutput("lsb_release -r")
+            release = output.split(':', 2)[1].strip()
+
+    elif platform.system() == "Darwin":
+        distributor = platform.system()
+        # FIXME: make an intelligent choice between MacPorts, Fink, and Homebrew
+        description = "Mac OS X (%s)" % platform.system()
+        release = platform.release()
+
+    else:
+        return None  # DepsHandler.handleMissingDependency() will treat this as "distro unknown"
+
+    # description, distributor, release are set to describe this distro
+    return Distro(description, distributor, release, None)

@@ -64,6 +64,55 @@ class Dependency:
         return "On Ubuntu, you can install %s with:\n" \
                 "sudo apt-get install %s" % (self.module, packageName)
 
+
+    # Darwin (Mac OS X)
+    #
+    # There are multiple package managers in use on Darwin (Mac OS X)
+    # Top ones are MacPorts, Fink, and Homebrew
+    # See survey "The state of package management on Mac OS X",
+    # from blog "On the lambda", by Tony Fischetti, 14. October, 2013
+    # http://www.onthelambda.com/2013/10/14/the-state-of-package-management-on-mac-os-x/
+    # This dependencies system seems geared to explaining only one package manager
+    # per user, so we have to choose as best we can.
+
+    Darwin_prefix = "On Mac OS X, you can install %s with %s like this:\n"
+
+    def Darwin_macports(self, packageName):
+        """
+        Returns a string explaining how to install the given package
+        on Darwin (Mac OS X) using the MacPorts package manager.
+        """
+        return (self.Darwin_prefix+"sudo port install %s") % (self.module, "MacPorts", packageName)
+
+
+    def Darwin_fink(self, packageName):
+        """
+        Returns a string explaining how to install the given package
+        on Darwin (Mac OS X) using the Fink package manager.
+        """
+        return (self.Darwin_prefix+"sudo apt-get install %s") % (self.module, "Fink", packageName)
+
+    def Darwin_homebrew(self, packageName):
+        """
+        Returns a string explaining how to install the given package
+        on Darwin (Mac OS X) using the Homebrew package manager.
+        """
+        return (self.Darwin_prefix+"brew install %s") % (self.module, "Homebrew", packageName)
+
+    def Darwin_pip(self, packageName):
+        """
+        Returns a string explaining how to install the given package
+        on Darwin (Mac OS X) using the PIP (Python) package manager.
+        Sometimes MacPorts doesn't carry a port for a python module, but PIP does.
+        """
+        return (self.Darwin_prefix+"pip install %s") % (self.module, "PIP", packageName)
+
+
+    def Pytag(self, prefix="py"):
+        """Returns a brief string based on current Python version, e.g. py27 for Python 2.7.x."""
+        (major, minor, _,_,_) = sys.version_info()
+        return prefix+"%d%d" % (major, minor)
+
     # distro aliases
     def FedoraCore_install(self, distro):
         self.Fedora_install(distro)
@@ -104,9 +153,9 @@ class DepsHandler(object):
             if ret:
                 sys.stderr.write("Cannot use module '%s'\n" % dep.module)
                 sys.stderr.write('This module is part of %s.\n' % dep.name)
-                sys.stderr.write(ret + '\n')
+                sys.stderr.write('The error message was: %r\n' % ret)
 
-                raise DependencyError(dep.module)
+                raise DependencyError('No module named '+dep.module)
 
 
     def handleImportError(self, exception):
@@ -132,6 +181,7 @@ class DepsHandler(object):
             sys.stderr.write(
                 'You can confirm it is installed by starting Python and running:\n')
             sys.stderr.write('import %s\n' % module)
+            sys.stderr.write("\n")
 
             return
 
@@ -149,14 +199,14 @@ class DepsHandler(object):
         if d:
             howto = dep.install(d)
             if howto:
-                sys.stderr.write(howto)
+                sys.stderr.write(howto+"\n")
             else:
                 url = self.report('DEP: %s, %s' % (dep.module, d.description))
                 sys.stderr.write("""On %s, %s does not know how to install %s.
     Please file a bug at:
     %s
     with instructions on how to install the dependency so we can add it.
-    """ % (d.description, dep.module, self._name, url))
+    """ % (d.description, self._name, dep.module, url))
         else:
             url = self.report('DISTRO: Unknown')
             sys.stderr.write("""%s does not know your distribution.
